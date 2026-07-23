@@ -2,9 +2,14 @@
 
 একটি মিনিমাল ডিজাইনের পার্সোনাল ফাইন্যান্স ট্র্যাকার ওয়েবসাইট, যেখানে ব্যবহারকারী দৈনিক আয়-ব্যয় লিখবে, এবং সিস্টেম স্বয়ংক্রিয়ভাবে দৈনিক ও মাসিক হিসাব তৈরি করবে, গ্রাফের মাধ্যমে বিশ্লেষণ দেখাবে।
 
+🌐 **লাইভ ওয়েবসাইট লিংক**: [https://amar-takar-hisab.vercel.app/](https://amar-takar-hisab.vercel.app/)
+
+---
+
 ## 🌟 প্রধান ফিচারসমূহ
 
-- 📊 **Dashboard (হোম পেজ)**: আজকের মোট খরচ, মোট আয়, এবং ব্যালেন্স।
+- 🔐 **মাল্টি-ইউজার অথেনটিকেশন (Multi-User Auth)**: ইমেইল/পাসওয়ার্ড ও ১-ক্লিক Google Sign-In। প্রতিটি ইউজারের হিসাব ও গ্রাফ সম্পূর্ণ প্রাইভেট ও আলাদা।
+- 📊 **Dashboard (হোম পেজ)**: আজকের মোট খরচ, মোট আয়, কারেন্ট ব্যালেন্স ও সপ্তাহের খরচের ট্রেন্ড চার্ট।
 - 📅 **Daily Report (দৈনিক রিপোর্ট)**: সময়সহ প্রতিদিনের খরচের হিসাব ও ক্যাটাগরি প্রোগ্রেস বার।
 - 📈 **Monthly Report (মাসিক রিপোর্ট)**: দৈনিক খরচের বার চার্ট, ক্যাটাগরি পাই চার্ট এবং Month vs Month তুলনা।
 - 📝 **Add/Edit Transaction**: আয় ও খরচের হিসাব এন্ট্রি মোডাল।
@@ -12,10 +17,13 @@
 - 🎯 **Budget & Savings Goals**: বাজেট অ্যালার্ট ও সেভিংস টার্গেট ট্র্যাকার।
 - ⚙️ **Settings & Export**: কারেন্সি সিলেক্টর, কাস্টম ক্যাটাগরি, ১-ক্লিক ডেমো ডেটা, CSV ও JSON এক্সপোর্ট।
 
+---
+
 ## 🛠️ প্রযুক্তি (Tech Stack)
 
 - **Frontend**: React + Vite
 - **Styling**: Tailwind CSS + Custom Soft UI Theme (`#F74B00` accent)
 - **Charts**: Chart.js (`react-chartjs-2`)
+- **Backend & Auth**: Firebase Auth + Cloud Firestore
 - **Icons**: Lucide React
-- **Storage**: LocalStorage (Offline persistence)
+- **Hosting**: Vercel
