@@ -287,6 +287,7 @@ function MainAppContent() {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onOpenAddModal={() => handleOpenAddModal('expense')}
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
         />
 
         {/* Main Content Area */}

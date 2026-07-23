@@ -6,10 +6,14 @@ import {
   History,
   Target,
   Settings as SettingsIcon,
-  PlusCircle
+  PlusCircle,
+  LogIn,
+  ShieldCheck
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-export default function Sidebar({ activeTab, setActiveTab, onOpenAddModal }) {
+export default function Sidebar({ activeTab, setActiveTab, onOpenAddModal, onOpenAuthModal }) {
+  const { currentUser } = useAuth();
   const navItems = [
     { id: 'dashboard', label: 'ড্যাশবোর্ড', icon: LayoutDashboard },
     { id: 'daily', label: 'দৈনিক রিপোর্ট', icon: CalendarDays },
@@ -47,14 +51,44 @@ export default function Sidebar({ activeTab, setActiveTab, onOpenAddModal }) {
         })}
 
         <div className="pt-6 mt-auto">
-          <div className="bg-brand-50/60 rounded-2xl p-4 border border-brand-100/80 text-center">
-            <p className="text-xs font-semibold text-slate-800">
-              স্মার্ট ট্র্যাকিং অভিজ্ঞতা
-            </p>
-            <p className="text-[11px] text-slate-500 mt-1">
-              স্বয়ংক্রিয় গ্রাফ ও বাজেটের সাথে আপনার সঞ্চয় বাড়ান
-            </p>
-          </div>
+          {currentUser ? (
+            <div className="bg-slate-50 rounded-2xl p-3 border border-slate-200/80 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {currentUser.photoURL ? (
+                  <img src={currentUser.photoURL} alt="User" className="w-8 h-8 rounded-lg object-cover" />
+                ) : (
+                  <div className="w-8 h-8 rounded-lg bg-brand-500 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                    {(currentUser.displayName || currentUser.email || 'U')[0].toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-900 truncate">
+                    {currentUser.displayName || currentUser.email.split('@')[0]}
+                  </p>
+                  <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>লগইন করা আছে</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-brand-50/80 rounded-2xl p-3.5 border border-brand-100 text-center space-y-2">
+              <p className="text-xs font-bold text-slate-900">
+                নিজের প্রোফাইলে সেভ রাখুন
+              </p>
+              <p className="text-[11px] text-slate-500">
+                আলাদা আইডি দিয়ে নিজের হিসাব প্রাইভেট রাখতে সাইন-ইন করুন
+              </p>
+              <button
+                onClick={onOpenAuthModal}
+                className="w-full py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold rounded-xl shadow-brand transition-all flex items-center justify-center gap-1.5"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>লগইন / সাইন-আপ</span>
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 
