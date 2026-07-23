@@ -8,42 +8,39 @@ import History from './components/History';
 import BudgetManager from './components/BudgetManager';
 import Settings from './components/Settings';
 import TransactionModal from './components/TransactionModal';
+import AuthModal from './components/AuthModal';
+
+import { AuthProvider, useAuth } from './context/AuthContext';
+import {
+  loadUserData,
+  saveUserTransactions,
+  saveUserCategories,
+  saveUserBudgets,
+  saveUserGoals
+} from './services/dbService';
 
 import { DEFAULT_CATEGORIES } from './data/initialCategories';
 import { SAMPLE_TRANSACTIONS, SAMPLE_SAVINGS_GOALS } from './data/sampleData';
 import { getTodayString } from './utils/formatters';
-import { Check, AlertCircle, X, Search } from 'lucide-react';
+import { Check, AlertCircle, X, Search, ShieldCheck } from 'lucide-react';
 
-export default function App() {
+function MainAppContent() {
+  const { currentUser } = useAuth();
+
   // Navigation State
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // App Data States (with LocalStorage)
-  const [transactions, setTransactions] = useState(() => {
-    const saved = localStorage.getItem('amar_takar_hisab_txs');
-    return saved ? JSON.parse(saved) : SAMPLE_TRANSACTIONS;
-  });
+  // App Data States
+  const [transactions, setTransactions] = useState([]);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [currency, setCurrency] = useState('৳');
+  const [savingsGoals, setSavingsGoals] = useState([]);
+  const [categoriesBudgets, setCategoriesBudgets] = useState({});
 
-  const [categories, setCategories] = useState(() => {
-    const saved = localStorage.getItem('amar_takar_hisab_cats');
-    return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
-  });
+  // Auth Modal State
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const [currency, setCurrency] = useState(() => {
-    return localStorage.getItem('amar_takar_hisab_currency') || '৳';
-  });
-
-  const [savingsGoals, setSavingsGoals] = useState(() => {
-    const saved = localStorage.getItem('amar_takar_hisab_goals');
-    return saved ? JSON.parse(saved) : SAMPLE_SAVINGS_GOALS;
-  });
-
-  const [categoriesBudgets, setCategoriesBudgets] = useState(() => {
-    const saved = localStorage.getItem('amar_takar_hisab_budgets');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  // Modal States
+  // Transaction Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [modalInitialType, setModalInitialType] = useState('expense');
@@ -54,28 +51,40 @@ export default function App() {
 
   // Global Search State
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Save to LocalStorage effects
+  // Load User Data whenever currentUser changes (Strict User Isolation)
   useEffect(() => {
-    localStorage.setItem('amar_takar_hisab_txs', JSON.stringify(transactions));
-  }, [transactions]);
+    const userId = currentUser ? currentUser.uid : null;
+    const initialData = loadUserData(userId);
+    setTransactions(initialData.transactions);
+    setCategories(initialData.categories);
+    setCategoriesBudgets(initialData.budgets);
+    setSavingsGoals(initialData.goals);
+  }, [currentUser]);
 
+  // Persist User Transactions
   useEffect(() => {
-    localStorage.setItem('amar_takar_hisab_cats', JSON.stringify(categories));
-  }, [categories]);
+    const userId = currentUser ? currentUser.uid : null;
+    saveUserTransactions(userId, transactions);
+  }, [transactions, currentUser]);
 
+  // Persist User Categories
   useEffect(() => {
-    localStorage.setItem('amar_takar_hisab_currency', currency);
-  }, [currency]);
+    const userId = currentUser ? currentUser.uid : null;
+    saveUserCategories(userId, categories);
+  }, [categories, currentUser]);
 
+  // Persist User Budgets
   useEffect(() => {
-    localStorage.setItem('amar_takar_hisab_goals', JSON.stringify(savingsGoals));
-  }, [savingsGoals]);
+    const userId = currentUser ? currentUser.uid : null;
+    saveUserBudgets(userId, categoriesBudgets);
+  }, [categoriesBudgets, currentUser]);
 
+  // Persist User Savings Goals
   useEffect(() => {
-    localStorage.setItem('amar_takar_hisab_budgets', JSON.stringify(categoriesBudgets));
-  }, [categoriesBudgets]);
+    const userId = currentUser ? currentUser.uid : null;
+    saveUserGoals(userId, savingsGoals);
+  }, [savingsGoals, currentUser]);
 
   // Toast helper
   const showToast = (message, type = 'success') => {
@@ -242,14 +251,31 @@ export default function App() {
         </div>
       )}
 
+      {/* User Login Banner Callout if Not Logged In */}
+      {!currentUser && (
+        <div className="bg-gradient-to-r from-brand-600 to-brand-500 text-white px-4 py-2 text-xs font-semibold flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2 max-w-7xl mx-auto w-full">
+            <ShieldCheck className="w-4 h-4 text-amber-300 shrink-0" />
+            <span>
+              আপনার প্রোফাইল আলাদা ও শতভাগ প্রাইভেট রাখতে সাইন-ইন করুন।
+            </span>
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="ml-auto underline font-bold hover:text-amber-200 shrink-0"
+            >
+              সাইন-ইন / রেজিস্টার →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Navigation */}
       <Navbar
         activeTab={activeTab}
         onOpenAddModal={() => handleOpenAddModal('expense')}
         onLoadDemoData={handleLoadDemoData}
-        onOpenSearch={() => {
-          setActiveTab('history');
-        }}
+        onOpenSearch={() => setActiveTab('history')}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
         currency={currency}
         totalBalance={transactions.reduce((sum, t) => t.type === 'income' ? sum + Number(t.amount) : sum - Number(t.amount), 0)}
       />
@@ -350,6 +376,21 @@ export default function App() {
         initialDate={modalInitialDate}
       />
 
+      {/* Login & Signup Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onShowToast={showToast}
+      />
+
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainAppContent />
+    </AuthProvider>
   );
 }
