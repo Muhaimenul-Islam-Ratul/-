@@ -299,6 +299,7 @@ function MainAppContent() {
               currency={currency}
               onOpenAddModal={handleOpenAddModal}
               onNavigateTab={setActiveTab}
+              onOpenAuthModal={() => setIsAuthModalOpen(true)}
             />
           )}
 

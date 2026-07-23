@@ -8,10 +8,13 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ChevronRight,
-  Clock
+  Clock,
+  LogIn,
+  ShieldCheck
 } from 'lucide-react';
 import { formatCurrency, formatBnDateShort, getTodayString, toBnDigits, formatBnTime } from '../utils/formatters';
 import CategoryIcon from './CategoryIcon';
+import { useAuth } from '../context/AuthContext';
 
 // Chart.js imports
 import {
@@ -43,8 +46,10 @@ export default function Dashboard({
   categories,
   currency,
   onOpenAddModal,
-  onNavigateTab
+  onNavigateTab,
+  onOpenAuthModal
 }) {
+  const { currentUser } = useAuth();
   const todayStr = getTodayString();
   const currentMonthStr = todayStr.substring(0, 7); // YYYY-MM
 
@@ -153,6 +158,33 @@ export default function Dashboard({
   return (
     <div className="space-y-6 animate-fade-in">
       
+      {/* Logged Out Welcome Callout Card */}
+      {!currentUser && (
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-5 sm:p-6 rounded-2xl shadow-soft flex flex-col sm:flex-row items-center justify-between gap-4 border border-slate-800">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-brand-500/20 text-brand-400 flex items-center justify-center shrink-0 border border-brand-500/30">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-100">
+                নিজের জন্য একটি প্রাইভেট প্রোফাইল খুলুন 🔒
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                লগইন করলে আপনার প্রতিটি জমা ও খরচ শুধুমাত্র আপনার আইডিতেই গোপন থাকবে।
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onOpenAuthModal}
+            className="w-full sm:w-auto px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs rounded-xl shadow-brand transition-all flex items-center justify-center gap-2 shrink-0"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>লগইন / সাইন-আপ করুন</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Banner / Welcome */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-soft">
         <div>
