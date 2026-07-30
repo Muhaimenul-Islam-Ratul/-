@@ -243,32 +243,79 @@ export const SAMPLE_SAVINGS_GOALS = [
   }
 ];
 
+export const DEFAULT_WALLETS = [
+  { id: 'wallet_cash', name: 'ক্যাশ টাকা', type: 'cash', icon: 'Banknote', color: '#10B981', initialBalance: 15000 },
+  { id: 'wallet_bkash', name: 'বিকাশ (bKash)', type: 'mobile', icon: 'Smartphone', color: '#E2136E', initialBalance: 8500 },
+  { id: 'wallet_nagad', name: 'নগদ (Nagad)', type: 'mobile', icon: 'Smartphone', color: '#F7931E', initialBalance: 3200 },
+  { id: 'wallet_bank', name: 'ব্যাংক অ্যাকাউন্ট', type: 'bank', icon: 'Building2', color: '#2563EB', initialBalance: 42500 }
+];
+
+export const SAMPLE_DEBTS = [
+  {
+    id: 'debt_1',
+    personName: 'রহিম (বন্ধু)',
+    type: 'given', // 'given' = ধার দিয়েছি (পাবো), 'taken' = ধার নিয়েছি (দেবো)
+    totalAmount: 2500,
+    paidAmount: 1000,
+    dueDate: '2026-08-15',
+    note: 'জরুরি কাজের জন্য নিয়েছিল',
+    status: 'pending' // 'pending', 'paid'
+  },
+  {
+    id: 'debt_2',
+    personName: 'আরিফ ভাই',
+    type: 'taken',
+    totalAmount: 5000,
+    paidAmount: 5000,
+    dueDate: '2026-07-20',
+    note: 'ট্যুরের খরচের ধার',
+    status: 'paid'
+  },
+  {
+    id: 'debt_3',
+    personName: 'তৌহিদ',
+    type: 'given',
+    totalAmount: 1200,
+    paidAmount: 0,
+    dueDate: '2026-08-01',
+    note: 'বই কেনার টাকা',
+    status: 'pending'
+  }
+];
+
 export const SAMPLE_RECURRING = [
   {
     id: 'rec_1',
     title: 'বাসা ভাড়া',
     amount: 10000,
     categoryId: 'cat_bills',
+    walletId: 'wallet_bank',
     type: 'expense',
     frequency: 'monthly',
-    dayOfMonth: 2
+    dayOfMonth: 2,
+    lastProcessedDate: '2026-07-02'
   },
   {
     id: 'rec_2',
     title: 'ওয়াইফাই ও ইন্টারনেট বিল',
     amount: 800,
     categoryId: 'cat_bills',
+    walletId: 'wallet_bkash',
     type: 'expense',
     frequency: 'monthly',
-    dayOfMonth: 5
+    dayOfMonth: 5,
+    lastProcessedDate: '2026-07-05'
   },
   {
     id: 'rec_3',
     title: 'মাসিক স্যালারি',
     amount: 50000,
     categoryId: 'cat_salary',
+    walletId: 'wallet_bank',
     type: 'income',
     frequency: 'monthly',
-    dayOfMonth: 1
+    dayOfMonth: 1,
+    lastProcessedDate: '2026-07-01'
   }
 ];
+

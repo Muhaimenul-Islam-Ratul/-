@@ -1,0 +1,18 @@
+{
+  "short_name": "আমার টাকার হিসাব",
+  "name": "আমার টাকার হিসাব — পার্সোনাল ফাইন্যান্স ট্র্যাকার",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#F8FAFC",
+  "theme_color": "#F74B00",
+  "display": "standalone",
+  "orientation": "portrait",
+  "description": "একটি আধুনিক ও সাশ্রয়ী পার্সোনাল ফাইন্যান্স ও বাজেট ট্র্যাকিং ওয়েব অ্যাপ্লিকেশন।"
+}

@@ -3,6 +3,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   updateProfile
@@ -29,9 +31,16 @@ export function AuthProvider({ children }) {
       if (displayName) {
         await updateProfile(result.user, { displayName });
       }
+      const userData = {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: displayName || result.user.displayName || email.split('@')[0],
+        photoURL: result.user.photoURL
+      };
+      setCurrentUser(userData);
+      localStorage.setItem('amar_takar_hisab_local_user', JSON.stringify(userData));
       return result.user;
     } catch (err) {
-      // Fallback local auth mock if Firebase API key is unconfigured
       const mockUser = {
         uid: 'user_' + Date.now(),
         email,
@@ -48,9 +57,16 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
+      const userData = {
+        uid: result.user.uid,
+        email: result.user.email,
+        displayName: result.user.displayName || email.split('@')[0],
+        photoURL: result.user.photoURL
+      };
+      setCurrentUser(userData);
+      localStorage.setItem('amar_takar_hisab_local_user', JSON.stringify(userData));
       return result.user;
     } catch (err) {
-      // Fallback local auth mock if Firebase API key is unconfigured
       const mockUser = {
         uid: 'user_' + String(email).replaceAll('@', '_').replaceAll('.', '_'),
         email,
@@ -63,21 +79,31 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Google Sign In
+  // Google Sign In with real Gmail credentials
   const loginWithGoogle = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      return result.user;
-    } catch (err) {
-      const mockUser = {
-        uid: 'google_user_demo',
-        email: 'google.user@example.com',
-        displayName: 'গুগল ইউজার',
-        photoURL: 'https://lh3.googleusercontent.com/a/default-user'
+      const user = result.user;
+      const userData = {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName || user.email.split('@')[0],
+        photoURL: user.photoURL
       };
-      setCurrentUser(mockUser);
-      localStorage.setItem('amar_takar_hisab_local_user', JSON.stringify(mockUser));
-      return mockUser;
+      setCurrentUser(userData);
+      localStorage.setItem('amar_takar_hisab_local_user', JSON.stringify(userData));
+      return user;
+    } catch (err) {
+      console.error('Google Sign In error:', err);
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr) {
+          console.error('Google Redirect error:', redirectErr);
+        }
+      }
+      throw err;
     }
   };
 
@@ -92,16 +118,58 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('amar_takar_hisab_local_user');
   };
 
+  // Update Profile (displayName & photoURL)
+  const updateUserProfile = async ({ displayName, photoURL }) => {
+    const updatedData = {
+      ...(currentUser || {}),
+      displayName: displayName !== undefined ? displayName : currentUser?.displayName,
+      photoURL: photoURL !== undefined ? photoURL : currentUser?.photoURL
+    };
+
+    if (auth.currentUser) {
+      try {
+        await updateProfile(auth.currentUser, {
+          displayName: updatedData.displayName,
+          photoURL: updatedData.photoURL
+        });
+      } catch (err) {
+        console.error('Firebase updateProfile error:', err);
+      }
+    }
+
+    setCurrentUser(updatedData);
+    localStorage.setItem('amar_takar_hisab_local_user', JSON.stringify(updatedData));
+    return updatedData;
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setCurrentUser(user);
-        localStorage.setItem('amar_takar_hisab_local_user', JSON.stringify({
+    // Handle redirect result if user returned from Google redirect login
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) {
+        const user = result.user;
+        const userData = {
           uid: user.uid,
           email: user.email,
-          displayName: user.displayName,
+          displayName: user.displayName || user.email.split('@')[0],
           photoURL: user.photoURL
-        }));
+        };
+        setCurrentUser(userData);
+        localStorage.setItem('amar_takar_hisab_local_user', JSON.stringify(userData));
+      }
+    }).catch((err) => {
+      console.error('Redirect result error:', err);
+    });
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const userData = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || user.email.split('@')[0],
+          photoURL: user.photoURL
+        };
+        setCurrentUser(userData);
+        localStorage.setItem('amar_takar_hisab_local_user', JSON.stringify(userData));
       } else {
         const localUser = localStorage.getItem('amar_takar_hisab_local_user');
         if (!localUser) {
@@ -119,7 +187,8 @@ export function AuthProvider({ children }) {
     signup,
     login,
     loginWithGoogle,
-    logout
+    logout,
+    updateUserProfile
   };
 
   return (

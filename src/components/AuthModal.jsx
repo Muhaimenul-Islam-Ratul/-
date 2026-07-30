@@ -40,10 +40,17 @@ export default function AuthModal({ isOpen, onClose, onShowToast }) {
     setLoading(true);
     try {
       await loginWithGoogle();
-      onShowToast('Google-এর মাধ্যমে সাইন-ইন করা হয়েছে!');
+      onShowToast('Google-এর মাধ্যমে আসল জিমেইল দিয়ে সাইন-ইন সম্পন্ন হয়েছে!');
       onClose();
     } catch (err) {
-      setErrorMsg('গুগল দিয়ে সাইন ইন ব্যর্থ হয়েছে।');
+      console.error('Google Sign-in Catch:', err);
+      if (err.code === 'auth/unauthorized-domain') {
+        setErrorMsg('⚠️ Firebase Console-এ amar-takar-hisab.vercel.app ডোমেইনটি Authorized Domain হিসেবে যুক্ত করা প্রয়োজন। অথবা আপনি নিচে আপনার আসল জিমেইল ইমেইল ও পাসওয়ার্ড লিখেও সাইন-ইন করতে পারেন।');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setErrorMsg('গুগল সাইন-ইন উইন্ডো বন্ধ করা হয়েছে। পুনরায় চেষ্টা করুন।');
+      } else {
+        setErrorMsg('গুগল দিয়ে সাইন ইন ব্যর্থ হয়েছে। অনুগ্রহ করে আপনার আসল জিমেইল আইডি ও পাসওয়ার্ড দিয়ে নিচে রেজিস্ট্রেশন/লগইন করুন।');
+      }
     } finally {
       setLoading(false);
     }

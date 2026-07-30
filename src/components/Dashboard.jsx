@@ -5,16 +5,23 @@ import {
   Wallet,
   Calendar,
   Sparkles,
-  ArrowUpRight,
-  ArrowDownRight,
   ChevronRight,
-  Clock,
+  ShieldCheck,
   LogIn,
-  ShieldCheck
+  FileText,
+  Users,
+  ArrowRightLeft,
+  Smartphone,
+  Banknote,
+  Building2,
+  AlertTriangle
 } from 'lucide-react';
 import { formatCurrency, formatBnDateShort, getTodayString, toBnDigits, formatBnTime } from '../utils/formatters';
 import CategoryIcon from './CategoryIcon';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { generateAIInsights } from '../utils/aiAdvisor';
+import { exportTransactionsPDF } from '../utils/pdfExporter';
 
 // Chart.js imports
 import {
@@ -42,14 +49,19 @@ ChartJS.register(
 );
 
 export default function Dashboard({
-  transactions,
-  categories,
-  currency,
+  transactions = [],
+  categories = [],
+  wallets = [],
+  debts = [],
+  budgets = {},
+  goals = [],
+  currency = '৳',
   onOpenAddModal,
   onNavigateTab,
   onOpenAuthModal
 }) {
   const { currentUser } = useAuth();
+  const { lang, t } = useLanguage();
   const todayStr = getTodayString();
   const currentMonthStr = todayStr.substring(0, 7); // YYYY-MM
 
@@ -57,22 +69,32 @@ export default function Dashboard({
   const todayTransactions = transactions.filter(t => t.date === todayStr);
   const todayExpense = todayTransactions
     .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
   const todayIncome = todayTransactions
     .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
-  const monthTransactions = transactions.filter(t => t.date.startsWith(currentMonthStr));
+  const monthTransactions = transactions.filter(t => (t.date || '').startsWith(currentMonthStr));
   const monthExpense = monthTransactions
     .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
   const monthIncome = monthTransactions
     .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
   const totalBalance = transactions.reduce((sum, t) => {
-    return t.type === 'income' ? sum + Number(t.amount) : sum - Number(t.amount);
+    return t.type === 'income' ? sum + Number(t.amount || 0) : sum - Number(t.amount || 0);
   }, 0);
+
+  // AI Advisor Insights
+  const aiData = generateAIInsights({
+    transactions,
+    categories,
+    budgets,
+    goals,
+    debts,
+    currency
+  });
 
   // Category map helper
   const categoryMap = categories.reduce((acc, cat) => {
@@ -82,6 +104,9 @@ export default function Dashboard({
 
   // Last 7 days data for Mini Weekly Trend Graph
   const last7Days = [];
+  const bnDayNames = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'];
+  const enDayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
@@ -89,13 +114,13 @@ export default function Dashboard({
     
     const dayExp = transactions
       .filter(t => t.date === dateStr && t.type === 'expense')
-      .reduce((sum, t) => sum + Number(t.amount), 0);
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
-    const dayName = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'][d.getDay()];
+    const dayName = lang === 'en' ? enDayNames[d.getDay()] : bnDayNames[d.getDay()];
     last7Days.push({
       dateStr,
       label: dayName,
-      shortDate: formatBnDateShort(dateStr),
+      shortDate: formatBnDateShort(dateStr, lang),
       amount: dayExp
     });
   }
@@ -105,7 +130,7 @@ export default function Dashboard({
     labels: last7Days.map(d => d.label),
     datasets: [
       {
-        label: 'দৈনিক খরচ',
+        label: lang === 'en' ? 'Daily Expense' : 'দৈনিক খরচ',
         data: last7Days.map(d => d.amount),
         borderColor: '#F74B00',
         backgroundColor: 'rgba(247, 75, 0, 0.08)',
@@ -128,14 +153,14 @@ export default function Dashboard({
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: (context) => `খরচ: ${formatCurrency(context.raw, currency)}`
+          label: (context) => `${lang === 'en' ? 'Expense' : 'খরচ'}: ${formatCurrency(context.raw, currency, lang)}`
         }
       }
     },
     scales: {
       x: {
         grid: { display: false },
-        ticks: { font: { family: 'Hind Siliguri', size: 12 }, color: '#64748B' }
+        ticks: { font: { family: lang === 'en' ? 'Inter' : 'Hind Siliguri', size: 12 }, color: '#64748B' }
       },
       y: {
         display: false,
@@ -144,16 +169,16 @@ export default function Dashboard({
     }
   };
 
-  // Smart Insights Generation
-  const highestExpenseCategory = categories
-    .filter(c => c.type === 'expense')
-    .map(cat => {
-      const total = monthTransactions
-        .filter(t => t.categoryId === cat.id && t.type === 'expense')
-        .reduce((sum, t) => sum + Number(t.amount), 0);
-      return { ...cat, total };
-    })
-    .sort((a, b) => b.total - a.total)[0];
+  const handleExportPDF = () => {
+    exportTransactionsPDF({
+      transactions,
+      categories,
+      title: lang === 'en' ? 'My Money Tracker — Overall Financial Report' : 'আমার টাকার হিসাব — সামগ্রিক ফাইনান্সিয়াল রিপোর্ট',
+      dateRangeStr: lang === 'en' ? 'All Transactions Summary' : 'সব ট্রানজেকশন সংকলন',
+      currency,
+      userName: currentUser ? (currentUser.displayName || currentUser.email) : (lang === 'en' ? 'Guest User' : 'গেস্ট ইউজার')
+    });
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -167,10 +192,10 @@ export default function Dashboard({
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-100">
-                নিজের জন্য একটি প্রাইভেট প্রোফাইল খুলুন 🔒
+                {lang === 'en' ? 'Create a private profile for yourself 🔒' : 'নিজের জন্য একটি প্রাইভেট প্রোফাইল খুলুন 🔒'}
               </h3>
               <p className="text-xs text-slate-300 mt-0.5">
-                লগইন করলে আপনার প্রতিটি জমা ও খরচ শুধুমাত্র আপনার আইডিতেই গোপন থাকবে।
+                {lang === 'en' ? 'Logging in keeps all your income and expenses private to your account.' : 'লগইন করলে আপনার প্রতিটি জমা ও খরচ শুধুমাত্র আপনার আইডিতেই গোপন থাকবে।'}
               </p>
             </div>
           </div>
@@ -180,7 +205,7 @@ export default function Dashboard({
             className="w-full sm:w-auto px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs rounded-xl shadow-brand transition-all flex items-center justify-center gap-2 shrink-0"
           >
             <LogIn className="w-4 h-4" />
-            <span>লগইন / সাইন-আপ করুন</span>
+            <span>{t('loginSignup', 'লগইন / সাইন-আপ করুন')}</span>
           </button>
         </div>
       )}
@@ -189,29 +214,66 @@ export default function Dashboard({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-soft">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
-            আজকের ফাইন্যান্স সামারি 👋
+            {t('dashboardTitle', 'আজকের ফাইন্যান্স সামারি 👋')}
           </h2>
           <p className="text-sm text-slate-500 mt-1">
-            দৈনিক আয়-ব্যয়ের নির্ভরযোগ্য হিসাব ও বিশ্লেষণের একনজরে রিপোর্ট
+            {t('dashboardDesc', 'দৈনিক আয়-ব্যয়ের নির্ভরযোগ্য হিসাব ও বিশ্লেষণের একনজরে রিপোর্ট')}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleExportPDF}
+            className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all flex items-center gap-1.5"
+          >
+            <FileText className="w-4 h-4 text-slate-500" />
+            <span>{t('downloadPDF', 'PDF ডাউনলোড')}</span>
+          </button>
           <button
             onClick={() => onOpenAddModal('expense')}
-            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold text-sm shadow-brand transition-all flex items-center justify-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold text-xs shadow-brand transition-all flex items-center gap-1.5"
           >
             <TrendingDown className="w-4 h-4" />
-            <span>+ খরচ যোগ</span>
+            <span>{t('addExpenseBtn', '+ খরচ যোগ')}</span>
           </button>
           <button
             onClick={() => onOpenAddModal('income')}
-            className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-sm transition-all flex items-center gap-1.5"
           >
             <TrendingUp className="w-4 h-4" />
-            <span>+ আয় যোগ</span>
+            <span>{t('addIncomeBtn', '+ আয় যোগ')}</span>
           </button>
         </div>
       </div>
+
+      {/* Wallets Quick Bar */}
+      {wallets.length > 0 && (
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-100 shadow-soft flex items-center justify-between gap-2 sm:gap-4 overflow-hidden">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-brand-500" />
+            <span className="text-xs font-bold text-slate-900 whitespace-nowrap">{t('yourWallets', 'আপনার ওয়ালেটস:')}</span>
+          </div>
+          <div className="flex-1 flex items-center gap-2 overflow-x-auto scrollbar-none min-w-0 py-0.5 px-1">
+            {wallets.map((w) => (
+              <button
+                key={w.id}
+                onClick={() => onNavigateTab('wallets')}
+                className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/60 hover:border-brand-500 flex items-center gap-2 shrink-0 text-xs font-bold transition-all whitespace-nowrap"
+              >
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: w.color || '#F74B00' }} />
+                <span className="text-slate-700">{w.name}:</span>
+                <span className="text-slate-900">{formatCurrency(w.initialBalance, currency, lang)}</span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => onNavigateTab('wallets')}
+            className="text-xs font-bold text-brand-600 hover:underline shrink-0 flex items-center gap-0.5 sm:gap-1 whitespace-nowrap pl-1"
+          >
+            <span>{t('allWallets', 'সব ওয়ালেট')}</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -220,7 +282,7 @@ export default function Dashboard({
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-soft hover:shadow-soft-hover transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              আজকের খরচ
+              {t('todayExpense', 'আজকের খরচ')}
             </span>
             <div className="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
               <TrendingDown className="w-5 h-5" />
@@ -228,10 +290,10 @@ export default function Dashboard({
           </div>
           <div className="mt-3">
             <div className="text-2xl font-bold text-slate-900">
-              {formatCurrency(todayExpense, currency)}
+              {formatCurrency(todayExpense, currency, lang)}
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              আজ মোট {toBnDigits(todayTransactions.filter(t => t.type === 'expense').length)} টি খরচ
+              {lang === 'en' ? `Total ${toBnDigits(todayTransactions.filter(t => t.type === 'expense').length, lang)} expenses today` : `আজ মোট ${toBnDigits(todayTransactions.filter(t => t.type === 'expense').length, lang)} টি খরচ`}
             </p>
           </div>
         </div>
@@ -240,7 +302,7 @@ export default function Dashboard({
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-soft hover:shadow-soft-hover transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              আজকের আয়
+              {t('todayIncome', 'আজকের আয়')}
             </span>
             <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <TrendingUp className="w-5 h-5" />
@@ -248,10 +310,10 @@ export default function Dashboard({
           </div>
           <div className="mt-3">
             <div className="text-2xl font-bold text-emerald-600">
-              {formatCurrency(todayIncome, currency)}
+              {formatCurrency(todayIncome, currency, lang)}
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              আজ মোট {toBnDigits(todayTransactions.filter(t => t.type === 'income').length)} টি আয়
+              {lang === 'en' ? `Total ${toBnDigits(todayTransactions.filter(t => t.type === 'income').length, lang)} incomes today` : `আজ মোট ${toBnDigits(todayTransactions.filter(t => t.type === 'income').length, lang)} টি আয়`}
             </p>
           </div>
         </div>
@@ -260,7 +322,7 @@ export default function Dashboard({
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-soft hover:shadow-soft-hover transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              বর্তমান মোট ব্যালেন্স
+              {t('currentBalance', 'বর্তমান মোট ব্যালেন্স')}
             </span>
             <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <Wallet className="w-5 h-5" />
@@ -268,10 +330,10 @@ export default function Dashboard({
           </div>
           <div className="mt-3">
             <div className={`text-2xl font-bold ${totalBalance >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
-              {formatCurrency(totalBalance, currency)}
+              {formatCurrency(totalBalance, currency, lang)}
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              সর্বমোট সর্বশেষ সঞ্চয় স্থিতিসমূহ
+              {lang === 'en' ? 'Total accumulated balance' : 'সর্বমোট সর্বশেষ সঞ্চয় স্থিতিসমূহ'}
             </p>
           </div>
         </div>
@@ -280,7 +342,7 @@ export default function Dashboard({
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-soft hover:shadow-soft-hover transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              এই মাসের মোট খরচ
+              {t('monthExpense', 'এই মাসের মোট খরচ')}
             </span>
             <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
               <Calendar className="w-5 h-5" />
@@ -288,17 +350,17 @@ export default function Dashboard({
           </div>
           <div className="mt-3">
             <div className="text-2xl font-bold text-slate-900">
-              {formatCurrency(monthExpense, currency)}
+              {formatCurrency(monthExpense, currency, lang)}
             </div>
             <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
-              <span>আয়: {formatCurrency(monthIncome, currency)}</span>
+              <span>{lang === 'en' ? `Income: ${formatCurrency(monthIncome, currency, lang)}` : `আয়: ${formatCurrency(monthIncome, currency, lang)}`}</span>
             </div>
           </div>
         </div>
 
       </div>
 
-      {/* Middle Section: Weekly Trend & Smart Insight */}
+      {/* Middle Section: Weekly Trend & Smart AI Advisor */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Weekly Trend Mini-Graph (2 Cols) */}
@@ -329,34 +391,40 @@ export default function Dashboard({
           </div>
         </div>
 
-        {/* Smart Insight Card (1 Col) */}
+        {/* AI Advisor Smart Insight Card */}
         <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-soft flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2 text-brand-400 mb-3">
-              <Sparkles className="w-5 h-5" />
-              <span className="text-xs font-bold uppercase tracking-wider">
-                স্মার্ট ইনসাইট
+            <div className="flex items-center justify-between text-brand-400 mb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  এআই ফাইন্যান্স এডভাইজার
+                </span>
+              </div>
+              <span className="text-[11px] bg-brand-500/20 text-brand-300 font-bold px-2 py-0.5 rounded-full">
+                স্কোর: {aiData.healthScore}/১০০
               </span>
             </div>
 
-            {highestExpenseCategory && highestExpenseCategory.total > 0 ? (
+            {aiData.insights.length > 0 ? (
               <div className="space-y-3">
-                <h4 className="text-lg font-bold text-slate-100 leading-snug">
-                  সবচেয়ে বেশি খরচ হয়েছে{' '}
-                  <span className="text-brand-400">{highestExpenseCategory.name}</span> ক্যাটাগরিতে!
+                <h4 className="text-base font-bold text-slate-100 leading-snug">
+                  {aiData.insights[0].title}
                 </h4>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  এই মাসে আপনি {highestExpenseCategory.name} খাতে মোট{' '}
-                  <strong className="text-white">{formatCurrency(highestExpenseCategory.total, currency)}</strong> খরচ করেছেন।
+                  {aiData.insights[0].desc}
                 </p>
+                <div className="bg-white/10 p-2.5 rounded-xl border border-white/10 text-xs text-amber-300">
+                  💡 {aiData.insights[0].tip}
+                </div>
               </div>
             ) : (
               <div>
-                <h4 className="text-lg font-bold text-slate-100">
+                <h4 className="text-base font-bold text-slate-100">
                   নিয়মিত হিসাব রাখুন
                 </h4>
                 <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                  প্রতিদিনের খরচ ও জমা সঠিকভাবে লিখে রাখুন, সিস্টেম স্বয়ংক্রিয়ভাবে আপনাকে বাজেট পরামর্শ প্রদান করবে।
+                  প্রতিদিনের খরচ ও জমা সঠিকভাবে লিখে রাখুন, সিস্টেম স্বয়ংক্রিয়ভাবে বাজেট টিপস প্রদান করবে।
                 </p>
               </div>
             )}
@@ -371,6 +439,29 @@ export default function Dashboard({
         </div>
 
       </div>
+
+      {/* Debt Summary Banner if any pending debts */}
+      {(aiData.pendingDebtsGiven > 0 || aiData.pendingDebtsTaken > 0) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-900">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold">দেনা-পাওনা রিমাইন্ডার</p>
+              <p className="text-xs text-amber-800 mt-0.5">
+                আপনার মোট পাওনা: <strong>{formatCurrency(aiData.pendingDebtsGiven, currency)}</strong> | দেনা: <strong>{formatCurrency(aiData.pendingDebtsTaken, currency)}</strong>
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigateTab('debts')}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all"
+          >
+            ধার-দেনা দেখুন →
+          </button>
+        </div>
+      )}
 
       {/* Recent Transactions List */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-soft p-6">

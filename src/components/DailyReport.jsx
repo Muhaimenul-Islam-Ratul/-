@@ -18,6 +18,7 @@ import {
   formatBnTime
 } from '../utils/formatters';
 import CategoryIcon from './CategoryIcon';
+import { exportTransactionsPDF } from '../utils/pdfExporter';
 
 export default function DailyReport({
   transactions,
@@ -118,6 +119,19 @@ export default function DailyReport({
               আজ
             </button>
           )}
+
+          <button
+            onClick={() => exportTransactionsPDF({
+              transactions: dayTransactions,
+              categories,
+              title: `দৈনিক ফাইনান্সিয়াল স্টেটমেন্ট (${selectedDate})`,
+              dateRangeStr: formatBnDate(selectedDate),
+              currency
+            })}
+            className="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+          >
+            📄 PDF রিপোর্ট
+          </button>
         </div>
 
         <div className="text-center sm:text-right">

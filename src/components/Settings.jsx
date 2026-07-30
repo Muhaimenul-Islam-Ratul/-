@@ -10,7 +10,10 @@ import {
   Plus,
   Sparkles,
   Repeat,
-  CheckCircle2
+  CheckCircle2,
+  Smartphone,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import CategoryIcon from './CategoryIcon';
 
@@ -27,7 +30,9 @@ export default function Settings({
   onClearAllData,
   recurring,
   onAddRecurring,
-  onDeleteRecurring
+  onDeleteRecurring,
+  onInstallApp,
+  isOnline = true
 }) {
   // New Category Form State
   const [newCatName, setNewCatName] = useState('');
@@ -92,6 +97,39 @@ export default function Settings({
         <p className="text-xs text-slate-500 mt-1">
           কাস্টম কারেন্সি, নতুন ক্যাটাগরি তৈরি, ডেটা এক্সপোর্ট এবং সেভ করা ব্যাকআপ পরিচালনা করুন
         </p>
+      </div>
+
+      {/* PWA Mobile App & Offline Sync Card */}
+      <div className="bg-gradient-to-r from-brand-600 via-brand-500 to-amber-500 rounded-2xl p-6 text-white shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 backdrop-blur-md">
+            <Smartphone className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-white">
+                মোবাইল অ্যাপ ও অফলাইন মোড 📲
+              </h3>
+              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                isOnline ? 'bg-emerald-500/30 text-emerald-100' : 'bg-rose-500/30 text-rose-100'
+              }`}>
+                {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+                <span>{isOnline ? 'অনলাইন মোড' : 'অফলাইন মোড'}</span>
+              </span>
+            </div>
+            <p className="text-xs text-brand-100 mt-1">
+              ইন্টারনেট ছাড়াই অ্যাপটি অফলাইনে ১০০% চলবে এবং ইন্টারনেট পেলে অটো-সিঙ্ক হবে।
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={onInstallApp}
+          className="w-full sm:w-auto px-5 py-2.5 bg-white text-brand-600 hover:bg-brand-50 font-extrabold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 shrink-0"
+        >
+          <Smartphone className="w-4 h-4" />
+          <span>মোবাইলে অ্যাপ ইনস্টল করুন</span>
+        </button>
       </div>
 
       {/* Grid Settings Sections */}

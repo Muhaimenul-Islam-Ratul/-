@@ -7,6 +7,10 @@
     <title>আমার টাকার হিসাব — পার্সোনাল ফাইন্যান্স ট্র্যাকার</title>
     <meta name="description" content="দৈনিক ও মাসিক আয়-ব্যয়ের সহজ ও সুন্দর ট্র্যাকার ওয়েবসাইট।" />
     
+    <!-- PWA Manifest & Theme -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#F74B00" />
+    
     <!-- Google Fonts: Hind Siliguri (Bengali) & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,5 +19,12 @@
   <body class="bg-[#F8FAFC] text-[#1A1A1A] antialiased selection:bg-brand-100 selection:text-brand-700 min-h-screen">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(err => console.error('PWA SW Register error:', err));
+        });
+      }
+    </script>
   </body>
 </html>
