@@ -69,15 +69,17 @@ export default function Navbar({
               <span>{lang === 'bn' ? 'EN' : 'BN'}</span>
             </button>
 
-            {/* Demo Data button */}
-            <button
-              onClick={onLoadDemoData}
-              title="রিপোর্ট দেখতে ডেমো ডেটা লোড করুন"
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-600 text-xs font-semibold transition-colors border border-brand-200/60"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{t('demoData', 'ডেমো ডেটা')}</span>
-            </button>
+            {/* Demo Data button (Only shown when not logged in) */}
+            {!currentUser && (
+              <button
+                onClick={onLoadDemoData}
+                title="রিপোর্ট দেখতে ডেমো ডেটা লোড করুন"
+                className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-50 hover:bg-brand-100 text-brand-600 text-xs font-semibold transition-colors border border-brand-200/60"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{t('demoData', 'ডেমো ডেটা')}</span>
+              </button>
+            )}
 
             {/* User Profile / Auth Button */}
             {currentUser ? (
