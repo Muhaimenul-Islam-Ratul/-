@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import HomePage from './components/HomePage';
@@ -137,34 +137,46 @@ function MainAppContent() {
     setActiveTab(tabId);
   };
 
+  const isInitialLoaded = useRef(false);
+
   // Load User Data whenever currentUser changes (with real-time cloud sync across devices)
   useEffect(() => {
+    isInitialLoaded.current = false;
     const userId = currentUser ? currentUser.uid : null;
+
     const { localData, unsubscribe } = loadUserData(userId, (cloudData) => {
-      setTransactions(cloudData.transactions);
-      setCategories(cloudData.categories);
-      setCategoriesBudgets(cloudData.budgets);
-      setSavingsGoals(cloudData.goals);
-      setWallets(cloudData.wallets);
-      setDebts(cloudData.debts);
-      setRecurring(cloudData.recurring);
+      if (cloudData) {
+        setTransactions(cloudData.transactions || []);
+        setCategories(cloudData.categories || DEFAULT_CATEGORIES);
+        setCategoriesBudgets(cloudData.budgets || {});
+        setSavingsGoals(cloudData.goals || []);
+        setWallets(cloudData.wallets || DEFAULT_WALLETS);
+        setDebts(cloudData.debts || []);
+        setRecurring(cloudData.recurring || []);
+      }
+      isInitialLoaded.current = true;
     });
 
-    setTransactions(localData.transactions);
-    setCategories(localData.categories);
-    setCategoriesBudgets(localData.budgets);
-    setSavingsGoals(localData.goals);
+    setTransactions(localData.transactions || []);
+    setCategories(localData.categories || DEFAULT_CATEGORIES);
+    setCategoriesBudgets(localData.budgets || {});
+    setSavingsGoals(localData.goals || []);
     setWallets(localData.wallets || DEFAULT_WALLETS);
     setDebts(localData.debts || []);
     setRecurring(localData.recurring || []);
 
+    const timer = setTimeout(() => {
+      isInitialLoaded.current = true;
+    }, 600);
+
     return () => {
+      clearTimeout(timer);
       if (unsubscribe) unsubscribe();
     };
   }, [currentUser]);
 
-  // Persistence Effects (saves to local cache + syncs to Cloud Firestore)
-  const fullState = {
+  // Keep fullState updated via Ref
+  const fullStateRef = useRef({
     transactions,
     categories,
     budgets: categoriesBudgets,
@@ -172,42 +184,62 @@ function MainAppContent() {
     wallets,
     debts,
     recurring
-  };
+  });
 
   useEffect(() => {
+    fullStateRef.current = {
+      transactions,
+      categories,
+      budgets: categoriesBudgets,
+      goals: savingsGoals,
+      wallets,
+      debts,
+      recurring
+    };
+  }, [transactions, categories, categoriesBudgets, savingsGoals, wallets, debts, recurring]);
+
+  // Persistence Effects (saves to local cache + syncs to Cloud Firestore ONLY when data changes after initial load)
+  useEffect(() => {
+    if (!isInitialLoaded.current) return;
     const userId = currentUser ? currentUser.uid : null;
-    saveUserTransactions(userId, transactions, fullState);
-  }, [transactions, currentUser]);
+    saveUserTransactions(userId, transactions, fullStateRef.current);
+  }, [transactions]);
 
   useEffect(() => {
+    if (!isInitialLoaded.current) return;
     const userId = currentUser ? currentUser.uid : null;
-    saveUserCategories(userId, categories, fullState);
-  }, [categories, currentUser]);
+    saveUserCategories(userId, categories, fullStateRef.current);
+  }, [categories]);
 
   useEffect(() => {
+    if (!isInitialLoaded.current) return;
     const userId = currentUser ? currentUser.uid : null;
-    saveUserBudgets(userId, categoriesBudgets, fullState);
-  }, [categoriesBudgets, currentUser]);
+    saveUserBudgets(userId, categoriesBudgets, fullStateRef.current);
+  }, [categoriesBudgets]);
 
   useEffect(() => {
+    if (!isInitialLoaded.current) return;
     const userId = currentUser ? currentUser.uid : null;
-    saveUserGoals(userId, savingsGoals, fullState);
-  }, [savingsGoals, currentUser]);
+    saveUserGoals(userId, savingsGoals, fullStateRef.current);
+  }, [savingsGoals]);
 
   useEffect(() => {
+    if (!isInitialLoaded.current) return;
     const userId = currentUser ? currentUser.uid : null;
-    saveUserWallets(userId, wallets, fullState);
-  }, [wallets, currentUser]);
+    saveUserWallets(userId, wallets, fullStateRef.current);
+  }, [wallets]);
 
   useEffect(() => {
+    if (!isInitialLoaded.current) return;
     const userId = currentUser ? currentUser.uid : null;
-    saveUserDebts(userId, debts, fullState);
-  }, [debts, currentUser]);
+    saveUserDebts(userId, debts, fullStateRef.current);
+  }, [debts]);
 
   useEffect(() => {
+    if (!isInitialLoaded.current) return;
     const userId = currentUser ? currentUser.uid : null;
-    saveUserRecurring(userId, recurring, fullState);
-  }, [recurring, currentUser]);
+    saveUserRecurring(userId, recurring, fullStateRef.current);
+  }, [recurring]);
 
   // Transaction Handlers
   const handleOpenAddModal = (type = 'expense', date = '') => {

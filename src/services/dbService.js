@@ -91,6 +91,9 @@ export function loadUserData(userId, onCloudUpdate) {
               });
             }
           }
+        } else {
+          // First time user login: initialize cloud document with localData
+          syncUserDataToCloud(userId, localData);
         }
       }, (err) => {
         console.warn('Firestore cloud sync notice:', err);
