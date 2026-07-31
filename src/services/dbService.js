@@ -1,5 +1,3 @@
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
-import { db } from '../config/firebase';
 import { DEFAULT_CATEGORIES } from '../data/initialCategories';
 import {
   SAMPLE_TRANSACTIONS,
@@ -23,7 +21,7 @@ export function getUserStorageKeys(userId) {
   };
 }
 
-// Load User Data (returns local cache first + subscribes to Firestore real-time cloud sync across devices)
+// Load User Data (Instant Local Cache + Async MongoDB Cloud Fetch & Polling for Cross-Device Sync)
 export function loadUserData(userId, onCloudUpdate) {
   const keys = getUserStorageKeys(userId);
 
@@ -45,89 +43,86 @@ export function loadUserData(userId, onCloudUpdate) {
     recurring: recurringRaw ? JSON.parse(recurringRaw) : (userId ? [] : SAMPLE_RECURRING)
   };
 
-  let unsubscribe = null;
+  let intervalId = null;
 
-  // If user is logged in, subscribe to real-time cloud changes from Firestore
-  if (userId) {
+  const fetchCloudData = async () => {
+    if (!userId) return;
     try {
-      const userDocRef = doc(db, 'user_data', userId);
+      const res = await fetch(`/api/userData?userId=${encodeURIComponent(userId)}`);
+      if (!res.ok) return;
+      const cloudData = await res.json();
 
-      unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-        // Skip local pending writes to avoid state loops when user adds multiple transactions rapidly
-        if (docSnap.metadata && docSnap.metadata.hasPendingWrites) {
-          return;
+      if (cloudData) {
+        if (cloudData.transactions) localStorage.setItem(keys.txsKey, JSON.stringify(cloudData.transactions));
+        if (cloudData.categories) localStorage.setItem(keys.catsKey, JSON.stringify(cloudData.categories));
+        if (cloudData.budgets) localStorage.setItem(keys.budgetsKey, JSON.stringify(cloudData.budgets));
+        if (cloudData.goals) localStorage.setItem(keys.goalsKey, JSON.stringify(cloudData.goals));
+        if (cloudData.wallets) localStorage.setItem(keys.walletsKey, JSON.stringify(cloudData.wallets));
+        if (cloudData.debts) localStorage.setItem(keys.debtsKey, JSON.stringify(cloudData.debts));
+        if (cloudData.recurring) localStorage.setItem(keys.recurringKey, JSON.stringify(cloudData.recurring));
+
+        if (onCloudUpdate) {
+          onCloudUpdate({
+            transactions: cloudData.transactions || [],
+            categories: cloudData.categories || DEFAULT_CATEGORIES,
+            budgets: cloudData.budgets || {},
+            goals: cloudData.goals || [],
+            wallets: cloudData.wallets || DEFAULT_WALLETS,
+            debts: cloudData.debts || [],
+            recurring: cloudData.recurring || []
+          });
         }
-
-        if (docSnap.exists()) {
-          const cloudData = docSnap.data();
-
-          if (cloudData) {
-            if (cloudData.transactions) {
-              localStorage.setItem(keys.txsKey, JSON.stringify(cloudData.transactions));
-            }
-            if (cloudData.categories) {
-              localStorage.setItem(keys.catsKey, JSON.stringify(cloudData.categories));
-            }
-            if (cloudData.budgets) {
-              localStorage.setItem(keys.budgetsKey, JSON.stringify(cloudData.budgets));
-            }
-            if (cloudData.goals) {
-              localStorage.setItem(keys.goalsKey, JSON.stringify(cloudData.goals));
-            }
-            if (cloudData.wallets) {
-              localStorage.setItem(keys.walletsKey, JSON.stringify(cloudData.wallets));
-            }
-            if (cloudData.debts) {
-              localStorage.setItem(keys.debtsKey, JSON.stringify(cloudData.debts));
-            }
-            if (cloudData.recurring) {
-              localStorage.setItem(keys.recurringKey, JSON.stringify(cloudData.recurring));
-            }
-
-            if (onCloudUpdate) {
-              onCloudUpdate({
-                transactions: cloudData.transactions || [],
-                categories: cloudData.categories || DEFAULT_CATEGORIES,
-                budgets: cloudData.budgets || {},
-                goals: cloudData.goals || [],
-                wallets: cloudData.wallets || DEFAULT_WALLETS,
-                debts: cloudData.debts || [],
-                recurring: cloudData.recurring || []
-              });
-            }
-          }
-        } else {
-          // First time user login: initialize cloud document with localData
-          syncUserDataToCloud(userId, localData);
-        }
-      }, (err) => {
-        console.warn('Firestore cloud sync notice:', err);
-      });
+      }
     } catch (err) {
-      console.warn('Firestore connection notice:', err);
+      console.warn('MongoDB API fetch notice:', err);
     }
+  };
+
+  if (userId) {
+    // Initial Fetch
+    fetchCloudData();
+    // Poll every 10 seconds for cross-device sync
+    intervalId = setInterval(fetchCloudData, 10000);
   }
+
+  const unsubscribe = () => {
+    if (intervalId) clearInterval(intervalId);
+  };
 
   return { localData, unsubscribe };
 }
 
-// Sync full state object to Cloud Firestore
+// Sync full state to MongoDB Cloud API
 export async function syncUserDataToCloud(userId, data) {
   if (!userId) return;
   try {
-    const userDocRef = doc(db, 'user_data', userId);
-    await setDoc(userDocRef, {
-      transactions: data.transactions || [],
-      categories: data.categories || DEFAULT_CATEGORIES,
-      budgets: data.budgets || {},
-      goals: data.goals || [],
-      wallets: data.wallets || DEFAULT_WALLETS,
-      debts: data.debts || [],
-      recurring: data.recurring || [],
-      updatedAt: Date.now()
-    }, { merge: true });
+    // 1. Sync User Settings (Wallets, Budgets, Goals, Debts, Recurring, Categories)
+    await fetch('/api/userData', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        categories: data.categories || DEFAULT_CATEGORIES,
+        budgets: data.budgets || {},
+        goals: data.goals || [],
+        wallets: data.wallets || DEFAULT_WALLETS,
+        debts: data.debts || [],
+        recurring: data.recurring || []
+      })
+    });
+
+    // 2. Sync Transactions individually to MongoDB Transaction Collection
+    if (data.transactions && Array.isArray(data.transactions)) {
+      for (const tx of data.transactions) {
+        await fetch('/api/transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, transaction: tx })
+        });
+      }
+    }
   } catch (err) {
-    console.warn('Firestore cloud sync error:', err);
+    console.warn('MongoDB Cloud Sync error:', err);
   }
 }
 
