@@ -53,6 +53,11 @@ export function loadUserData(userId, onCloudUpdate) {
       const userDocRef = doc(db, 'user_data', userId);
 
       unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+        // Skip local pending writes to avoid state loops when user adds multiple transactions rapidly
+        if (docSnap.metadata && docSnap.metadata.hasPendingWrites) {
+          return;
+        }
+
         if (docSnap.exists()) {
           const cloudData = docSnap.data();
 

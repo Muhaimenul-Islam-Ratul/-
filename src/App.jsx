@@ -20,13 +20,8 @@ import RecurringManager from './components/RecurringManager';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import {
   loadUserData,
-  saveUserTransactions,
-  saveUserCategories,
-  saveUserBudgets,
-  saveUserGoals,
-  saveUserWallets,
-  saveUserDebts,
-  saveUserRecurring
+  getUserStorageKeys,
+  syncUserDataToCloud
 } from './services/dbService';
 
 import { DEFAULT_CATEGORIES } from './data/initialCategories';
@@ -175,19 +170,12 @@ function MainAppContent() {
     };
   }, [currentUser]);
 
-  // Keep fullState updated via Ref
-  const fullStateRef = useRef({
-    transactions,
-    categories,
-    budgets: categoriesBudgets,
-    goals: savingsGoals,
-    wallets,
-    debts,
-    recurring
-  });
-
+  // Unified Persistence Effect (Saves to Local Storage + Cloud Firestore)
   useEffect(() => {
-    fullStateRef.current = {
+    if (!isInitialLoaded.current) return;
+    const userId = currentUser ? currentUser.uid : null;
+
+    const fullState = {
       transactions,
       categories,
       budgets: categoriesBudgets,
@@ -196,50 +184,24 @@ function MainAppContent() {
       debts,
       recurring
     };
-  }, [transactions, categories, categoriesBudgets, savingsGoals, wallets, debts, recurring]);
 
-  // Persistence Effects (saves to local cache + syncs to Cloud Firestore ONLY when data changes after initial load)
-  useEffect(() => {
-    if (!isInitialLoaded.current) return;
-    const userId = currentUser ? currentUser.uid : null;
-    saveUserTransactions(userId, transactions, fullStateRef.current);
-  }, [transactions]);
+    // Update LocalStorage keys for instant local cache speed
+    const keys = getUserStorageKeys(userId);
+    localStorage.setItem(keys.txsKey, JSON.stringify(transactions));
+    localStorage.setItem(keys.catsKey, JSON.stringify(categories));
+    localStorage.setItem(keys.budgetsKey, JSON.stringify(categoriesBudgets));
+    localStorage.setItem(keys.goalsKey, JSON.stringify(savingsGoals));
+    localStorage.setItem(keys.walletsKey, JSON.stringify(wallets));
+    localStorage.setItem(keys.debtsKey, JSON.stringify(debts));
+    localStorage.setItem(keys.recurringKey, JSON.stringify(recurring));
 
-  useEffect(() => {
-    if (!isInitialLoaded.current) return;
-    const userId = currentUser ? currentUser.uid : null;
-    saveUserCategories(userId, categories, fullStateRef.current);
-  }, [categories]);
+    // Debounce Cloud Sync slightly (150ms) to handle rapid consecutive additions smoothly
+    const syncTimer = setTimeout(() => {
+      syncUserDataToCloud(userId, fullState);
+    }, 150);
 
-  useEffect(() => {
-    if (!isInitialLoaded.current) return;
-    const userId = currentUser ? currentUser.uid : null;
-    saveUserBudgets(userId, categoriesBudgets, fullStateRef.current);
-  }, [categoriesBudgets]);
-
-  useEffect(() => {
-    if (!isInitialLoaded.current) return;
-    const userId = currentUser ? currentUser.uid : null;
-    saveUserGoals(userId, savingsGoals, fullStateRef.current);
-  }, [savingsGoals]);
-
-  useEffect(() => {
-    if (!isInitialLoaded.current) return;
-    const userId = currentUser ? currentUser.uid : null;
-    saveUserWallets(userId, wallets, fullStateRef.current);
-  }, [wallets]);
-
-  useEffect(() => {
-    if (!isInitialLoaded.current) return;
-    const userId = currentUser ? currentUser.uid : null;
-    saveUserDebts(userId, debts, fullStateRef.current);
-  }, [debts]);
-
-  useEffect(() => {
-    if (!isInitialLoaded.current) return;
-    const userId = currentUser ? currentUser.uid : null;
-    saveUserRecurring(userId, recurring, fullStateRef.current);
-  }, [recurring]);
+    return () => clearTimeout(syncTimer);
+  }, [transactions, categories, categoriesBudgets, savingsGoals, wallets, debts, recurring, currentUser]);
 
   // Transaction Handlers
   const handleOpenAddModal = (type = 'expense', date = '') => {
