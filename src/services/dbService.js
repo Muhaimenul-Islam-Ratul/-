@@ -25,13 +25,21 @@ export function getUserStorageKeys(userId) {
 export function loadUserData(userId, onCloudUpdate) {
   const keys = getUserStorageKeys(userId);
 
-  const txsRaw = localStorage.getItem(keys.txsKey);
+  let txsRaw = localStorage.getItem(keys.txsKey);
   const catsRaw = localStorage.getItem(keys.catsKey);
   const budgetsRaw = localStorage.getItem(keys.budgetsKey);
   const goalsRaw = localStorage.getItem(keys.goalsKey);
   const walletsRaw = localStorage.getItem(keys.walletsKey);
   const debtsRaw = localStorage.getItem(keys.debtsKey);
   const recurringRaw = localStorage.getItem(keys.recurringKey);
+
+  // If user transactions are empty for this user ID, fallback to guest transactions if available
+  if (!txsRaw && userId) {
+    const guestTxs = localStorage.getItem('amar_takar_hisab_txs_guest');
+    if (guestTxs && guestTxs !== '[]') {
+      txsRaw = guestTxs;
+    }
+  }
 
   const localData = {
     transactions: txsRaw ? JSON.parse(txsRaw) : (userId ? [] : SAMPLE_TRANSACTIONS),
@@ -53,7 +61,15 @@ export function loadUserData(userId, onCloudUpdate) {
       const cloudData = await res.json();
 
       if (cloudData) {
-        if (cloudData.transactions) localStorage.setItem(keys.txsKey, JSON.stringify(cloudData.transactions));
+        let cloudTxs = cloudData.transactions || [];
+
+        // Auto-migrate local transactions to MongoDB if new cloud database has 0 transactions
+        if (cloudTxs.length === 0 && localData.transactions && localData.transactions.length > 0) {
+          cloudTxs = localData.transactions;
+          syncUserDataToCloud(userId, localData);
+        }
+
+        if (cloudTxs.length > 0) localStorage.setItem(keys.txsKey, JSON.stringify(cloudTxs));
         if (cloudData.categories) localStorage.setItem(keys.catsKey, JSON.stringify(cloudData.categories));
         if (cloudData.budgets) localStorage.setItem(keys.budgetsKey, JSON.stringify(cloudData.budgets));
         if (cloudData.goals) localStorage.setItem(keys.goalsKey, JSON.stringify(cloudData.goals));
@@ -63,13 +79,13 @@ export function loadUserData(userId, onCloudUpdate) {
 
         if (onCloudUpdate) {
           onCloudUpdate({
-            transactions: cloudData.transactions || [],
-            categories: cloudData.categories || DEFAULT_CATEGORIES,
-            budgets: cloudData.budgets || {},
-            goals: cloudData.goals || [],
-            wallets: cloudData.wallets || DEFAULT_WALLETS,
-            debts: cloudData.debts || [],
-            recurring: cloudData.recurring || []
+            transactions: cloudTxs,
+            categories: cloudData.categories && cloudData.categories.length > 0 ? cloudData.categories : localData.categories,
+            budgets: cloudData.budgets || localData.budgets,
+            goals: cloudData.goals || localData.goals,
+            wallets: cloudData.wallets && cloudData.wallets.length > 0 ? cloudData.wallets : localData.wallets,
+            debts: cloudData.debts || localData.debts,
+            recurring: cloudData.recurring || localData.recurring
           });
         }
       }
