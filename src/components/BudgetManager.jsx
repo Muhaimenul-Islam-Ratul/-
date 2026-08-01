@@ -203,8 +203,11 @@ export default function BudgetManager({
                           inputMode="decimal"
                           value={editingBudgetVal}
                           onChange={(e) => {
-                            const val = e.target.value.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
-                            if (val === '' || /^\d*\.?\d*$/.test(val)) setEditingBudgetVal(val);
+                            const raw = e.target.value;
+                            const bnMap = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' };
+                            const converted = raw.replace(/[০-৯]/g, m => bnMap[m] || m);
+                            const cleaned = converted.replace(/[^0-9.]/g, '');
+                            setEditingBudgetVal(cleaned);
                           }}
                           placeholder="বাজেট"
                           className="w-20 px-2 py-1 text-xs border rounded-lg"
@@ -381,8 +384,11 @@ export default function BudgetManager({
                     placeholder="৫০,০০০"
                     value={goalTarget}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
-                      if (val === '' || /^\d*\.?\d*$/.test(val)) setGoalTarget(val);
+                      const raw = e.target.value;
+                      const bnMap = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' };
+                      const converted = raw.replace(/[০-৯]/g, m => bnMap[m] || m);
+                      const cleaned = converted.replace(/[^0-9.]/g, '');
+                      setGoalTarget(cleaned);
                     }}
                     className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl"
                   />
@@ -398,8 +404,11 @@ export default function BudgetManager({
                     placeholder="০"
                     value={goalInitial}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
-                      if (val === '' || /^\d*\.?\d*$/.test(val)) setGoalInitial(val);
+                      const raw = e.target.value;
+                      const bnMap = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' };
+                      const converted = raw.replace(/[০-৯]/g, m => bnMap[m] || m);
+                      const cleaned = converted.replace(/[^0-9.]/g, '');
+                      setGoalInitial(cleaned);
                     }}
                     className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl"
                   />

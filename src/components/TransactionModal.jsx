@@ -177,12 +177,11 @@ export default function TransactionModal({
                   placeholder="0"
                   value={amount}
                   onChange={(e) => {
-                    const val = e.target.value;
-                    // Auto-convert Bangla digits (০-৯) to English digits (0-9)
-                    const converted = val.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
-                    if (converted === '' || /^\d*\.?\d*$/.test(converted)) {
-                      setAmount(converted);
-                    }
+                    const raw = e.target.value;
+                    const bnMap = { '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9' };
+                    const converted = raw.replace(/[০-৯]/g, m => bnMap[m] || m);
+                    const cleaned = converted.replace(/[^0-9.]/g, '');
+                    setAmount(cleaned);
                   }}
                   className="w-full pl-8 pr-3 py-2.5 text-lg font-bold bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:border-brand-500 text-slate-900"
                 />
