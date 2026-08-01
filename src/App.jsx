@@ -126,9 +126,6 @@ function MainAppContent() {
 
   // Protected Tab Selection Wrapper
   const handleSelectTab = (tabId) => {
-    if (!currentUser && tabId !== 'home') {
-      setIsAuthModalOpen(true);
-    }
     setActiveTab(tabId);
   };
 
@@ -205,10 +202,6 @@ function MainAppContent() {
 
   // Transaction Handlers
   const handleOpenAddModal = (type = 'expense', date = '') => {
-    if (!currentUser) {
-      setIsAuthModalOpen(true);
-      return;
-    }
     setEditingTransaction(null);
     setModalInitialType(type);
     setModalInitialDate(date || getTodayString());

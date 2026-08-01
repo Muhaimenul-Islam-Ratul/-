@@ -47,7 +47,6 @@ export default function Sidebar({ activeTab, setActiveTab, onOpenAuthModal, onOp
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
-          const isLocked = !currentUser && !item.isPublic;
           const label = t(item.labelKey, item.fallback);
 
           return (
@@ -64,10 +63,6 @@ export default function Sidebar({ activeTab, setActiveTab, onOpenAuthModal, onOp
                 <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}`} />
                 <span>{label}</span>
               </div>
-
-              {isLocked && (
-                <Lock className="w-3.5 h-3.5 text-amber-500 opacity-80 shrink-0" title="লগইন প্রয়োজন" />
-              )}
             </button>
           );
         })}
@@ -143,9 +138,6 @@ export default function Sidebar({ activeTab, setActiveTab, onOpenAuthModal, onOp
             >
               <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : ''}`} />
               <span className="text-[10px] mt-1 leading-tight">{t(item.labelKey, item.fallback)}</span>
-              {!currentUser && !item.isPublic && (
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500"></span>
-              )}
             </button>
           );
         })}

@@ -78,15 +78,31 @@ export default function TransactionModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!amount || Number(amount) <= 0 || !categoryId) return;
+    
+    const parsedAmount = Number(amount);
+    if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
+      alert(lang === 'en' ? 'Please enter a valid amount greater than 0!' : 'অনুগ্রহ করে ০ এর বেশি সঠিক টাকার পরিমাণ লিখুন!');
+      return;
+    }
+
+    let targetCatId = categoryId;
+    if (!targetCatId) {
+      const firstMatch = filteredCategories[0] || categories[0];
+      if (firstMatch) targetCatId = firstMatch.id;
+    }
+
+    if (!targetCatId) {
+      alert(lang === 'en' ? 'Please select a category!' : 'অনুগ্রহ করে একটি ক্যাটাগরি বেছে নিন!');
+      return;
+    }
 
     onSave({
       id: editingTransaction ? editingTransaction.id : 'tx_' + Date.now(),
-      amount: Number(amount),
+      amount: parsedAmount,
       type,
-      categoryId,
+      categoryId: targetCatId,
       walletId: walletId || wallets[0]?.id || 'wallet_cash',
-      date,
+      date: date || getTodayString(),
       time: time || '12:00',
       note: note.trim()
     });
