@@ -167,17 +167,23 @@ export default function TransactionModal({
                 {lang === 'en' ? 'Amount (৳)' : 'টাকার পরিমাণ (৳)'}
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-3 text-lg font-bold text-slate-400">
+                <span className="absolute left-3 top-3 text-lg font-bold text-slate-400 pointer-events-none select-none">
                   ৳
                 </span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   required
-                  min="1"
-                  step="any"
                   placeholder="0"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Auto-convert Bangla digits (০-৯) to English digits (0-9)
+                    const converted = val.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+                    if (converted === '' || /^\d*\.?\d*$/.test(converted)) {
+                      setAmount(converted);
+                    }
+                  }}
                   className="w-full pl-8 pr-3 py-2.5 text-lg font-bold bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:border-brand-500 text-slate-900"
                 />
               </div>

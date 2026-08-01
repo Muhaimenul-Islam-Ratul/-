@@ -199,9 +199,13 @@ export default function BudgetManager({
                     {editingCatId === cat.id ? (
                       <div className="flex items-center gap-1">
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           value={editingBudgetVal}
-                          onChange={(e) => setEditingBudgetVal(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+                            if (val === '' || /^\d*\.?\d*$/.test(val)) setEditingBudgetVal(val);
+                          }}
                           placeholder="বাজেট"
                           className="w-20 px-2 py-1 text-xs border rounded-lg"
                         />
@@ -371,11 +375,15 @@ export default function BudgetManager({
                     টার্গেট টাকা (৳)
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     required
                     placeholder="৫০,০০০"
                     value={goalTarget}
-                    onChange={(e) => setGoalTarget(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+                      if (val === '' || /^\d*\.?\d*$/.test(val)) setGoalTarget(val);
+                    }}
                     className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
@@ -385,10 +393,14 @@ export default function BudgetManager({
                     বর্তমানে জমানো টাকা
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="০"
                     value={goalInitial}
-                    onChange={(e) => setGoalInitial(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+                      if (val === '' || /^\d*\.?\d*$/.test(val)) setGoalInitial(val);
+                    }}
                     className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
