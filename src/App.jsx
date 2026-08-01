@@ -138,13 +138,20 @@ function MainAppContent() {
 
     const { localData, unsubscribe } = loadUserData(userId, (cloudData) => {
       if (cloudData) {
-        setTransactions(cloudData.transactions || []);
-        setCategories(cloudData.categories || DEFAULT_CATEGORIES);
-        setCategoriesBudgets(cloudData.budgets || {});
-        setSavingsGoals(cloudData.goals || []);
-        setWallets(cloudData.wallets || DEFAULT_WALLETS);
-        setDebts(cloudData.debts || []);
-        setRecurring(cloudData.recurring || []);
+        if (cloudData.transactions && Array.isArray(cloudData.transactions)) {
+          setTransactions(prev => {
+            const map = new Map();
+            prev.forEach(t => map.set(t.id, t));
+            cloudData.transactions.forEach(t => map.set(t.id, t));
+            return Array.from(map.values()).sort((a, b) => (b.id > a.id ? 1 : -1));
+          });
+        }
+        if (cloudData.categories && cloudData.categories.length > 0) setCategories(cloudData.categories);
+        if (cloudData.budgets) setCategoriesBudgets(cloudData.budgets);
+        if (cloudData.goals) setSavingsGoals(cloudData.goals);
+        if (cloudData.wallets && cloudData.wallets.length > 0) setWallets(cloudData.wallets);
+        if (cloudData.debts) setDebts(cloudData.debts);
+        if (cloudData.recurring) setRecurring(cloudData.recurring);
       }
       isInitialLoaded.current = true;
     });

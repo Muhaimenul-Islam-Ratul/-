@@ -23,15 +23,9 @@ export default function TransactionModal({
   const [time, setTime] = useState('');
   const [note, setNote] = useState('');
 
-  const prevIsOpen = useRef(false);
-  const prevEditingTx = useRef(null);
-
-  // Synchronize initial modal fields ONLY when modal opens or editingTransaction changes
+  // Reset and populate modal form fields whenever modal opens or editingTransaction changes
   useEffect(() => {
-    const justOpened = isOpen && !prevIsOpen.current;
-    const editingChanged = editingTransaction !== prevEditingTx.current;
-
-    if (isOpen && (justOpened || editingChanged)) {
+    if (isOpen) {
       if (editingTransaction) {
         setType(editingTransaction.type || 'expense');
         setAmount(editingTransaction.amount ? String(editingTransaction.amount) : '');
@@ -51,17 +45,15 @@ export default function TransactionModal({
         setTime(timeStr);
         setNote('');
 
-        // Auto-select first matching category
         const firstCat = categories.find(c => c.type === initialType);
         if (firstCat) {
           setCategoryId(firstCat.id);
+        } else if (categories.length > 0) {
+          setCategoryId(categories[0].id);
         }
       }
     }
-
-    prevIsOpen.current = isOpen;
-    prevEditingTx.current = editingTransaction;
-  }, [isOpen, editingTransaction, initialType, initialDate, categories, wallets]);
+  }, [isOpen, editingTransaction]);
 
   // When type toggles, auto switch to default category of that type
   const handleTypeChange = (newType) => {
