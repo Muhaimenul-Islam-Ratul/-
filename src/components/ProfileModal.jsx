@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Upload, User, Camera, Check, Trash2, AlertCircle, Globe } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -10,12 +10,16 @@ export default function ProfileModal({ isOpen, onClose, onShowToast, lang = 'bn'
   const [errorMsg, setErrorMsg] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  const prevIsOpen = useRef(false);
+
   useEffect(() => {
-    if (currentUser) {
+    const justOpened = isOpen && !prevIsOpen.current;
+    if (isOpen && justOpened && currentUser) {
       setNickname(currentUser.displayName || '');
       setPhotoURL(currentUser.photoURL || '');
       setErrorMsg('');
     }
+    prevIsOpen.current = isOpen;
   }, [isOpen, currentUser]);
 
   if (!isOpen || !currentUser) return null;

@@ -86,32 +86,62 @@ app.get('/api/userData', async (req, res) => {
   }
 });
 
-// POST Create Single Transaction
+// POST Create Single or Bulk Transactions
 app.post('/api/transactions', async (req, res) => {
   try {
     await connectDB();
-    const { userId, transaction } = req.body;
-    if (!userId || !transaction || !transaction.id) {
-      return res.status(400).json({ error: 'userId and valid transaction object required' });
+    const { userId, transaction, transactions } = req.body;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
     }
 
-    const newTx = await Transaction.findOneAndUpdate(
-      { id: transaction.id },
-      {
-        id: transaction.id,
-        userId,
-        amount: Number(transaction.amount),
-        type: transaction.type,
-        categoryId: transaction.categoryId,
-        walletId: transaction.walletId || 'wallet_cash',
-        date: transaction.date,
-        time: transaction.time || '',
-        note: transaction.note || ''
-      },
-      { upsert: true, new: true }
-    );
+    if (transactions && Array.isArray(transactions)) {
+      if (transactions.length === 0) {
+        return res.json({ success: true, count: 0 });
+      }
+      const ops = transactions.map(tx => ({
+        updateOne: {
+          filter: { id: tx.id, userId },
+          update: {
+            $set: {
+              id: tx.id,
+              userId,
+              amount: Number(tx.amount),
+              type: tx.type,
+              categoryId: tx.categoryId,
+              walletId: tx.walletId || 'wallet_cash',
+              date: tx.date,
+              time: tx.time || '',
+              note: tx.note || ''
+            }
+          },
+          upsert: true
+        }
+      }));
+      await Transaction.bulkWrite(ops);
+      return res.json({ success: true, count: transactions.length });
+    }
 
-    res.json({ success: true, transaction: newTx });
+    if (transaction && transaction.id) {
+      const newTx = await Transaction.findOneAndUpdate(
+        { id: transaction.id, userId },
+        {
+          id: transaction.id,
+          userId,
+          amount: Number(transaction.amount),
+          type: transaction.type,
+          categoryId: transaction.categoryId,
+          walletId: transaction.walletId || 'wallet_cash',
+          date: transaction.date,
+          time: transaction.time || '',
+          note: transaction.note || ''
+        },
+        { upsert: true, new: true }
+      );
+      return res.json({ success: true, transaction: newTx });
+    }
+
+    res.status(400).json({ error: 'Valid transaction or transactions array required' });
   } catch (err) {
     console.error('Error saving transaction:', err);
     res.status(500).json({ error: err.message });

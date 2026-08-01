@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, TrendingDown, TrendingUp, Calendar, Clock, FileText, Check, Wallet } from 'lucide-react';
 import { getTodayString } from '../utils/formatters';
 import CategoryIcon from './CategoryIcon';
@@ -23,33 +23,44 @@ export default function TransactionModal({
   const [time, setTime] = useState('');
   const [note, setNote] = useState('');
 
-  // Synchronize initial modal fields when opened or editing
-  useEffect(() => {
-    if (editingTransaction) {
-      setType(editingTransaction.type || 'expense');
-      setAmount(editingTransaction.amount ? String(editingTransaction.amount) : '');
-      setCategoryId(editingTransaction.categoryId || '');
-      setWalletId(editingTransaction.walletId || wallets[0]?.id || 'wallet_cash');
-      setDate(editingTransaction.date || getTodayString());
-      setTime(editingTransaction.time || '');
-      setNote(editingTransaction.note || '');
-    } else {
-      setType(initialType);
-      setAmount('');
-      setWalletId(wallets[0]?.id || 'wallet_cash');
-      setDate(initialDate || getTodayString());
-      
-      const now = new Date();
-      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      setTime(timeStr);
-      setNote('');
+  const prevIsOpen = useRef(false);
+  const prevEditingTx = useRef(null);
 
-      // Auto-select first matching category
-      const firstCat = categories.find(c => c.type === initialType);
-      if (firstCat) {
-        setCategoryId(firstCat.id);
+  // Synchronize initial modal fields ONLY when modal opens or editingTransaction changes
+  useEffect(() => {
+    const justOpened = isOpen && !prevIsOpen.current;
+    const editingChanged = editingTransaction !== prevEditingTx.current;
+
+    if (isOpen && (justOpened || editingChanged)) {
+      if (editingTransaction) {
+        setType(editingTransaction.type || 'expense');
+        setAmount(editingTransaction.amount ? String(editingTransaction.amount) : '');
+        setCategoryId(editingTransaction.categoryId || '');
+        setWalletId(editingTransaction.walletId || (wallets[0]?.id || 'wallet_cash'));
+        setDate(editingTransaction.date || getTodayString());
+        setTime(editingTransaction.time || '');
+        setNote(editingTransaction.note || '');
+      } else {
+        setType(initialType);
+        setAmount('');
+        setWalletId(wallets[0]?.id || 'wallet_cash');
+        setDate(initialDate || getTodayString());
+        
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        setTime(timeStr);
+        setNote('');
+
+        // Auto-select first matching category
+        const firstCat = categories.find(c => c.type === initialType);
+        if (firstCat) {
+          setCategoryId(firstCat.id);
+        }
       }
     }
+
+    prevIsOpen.current = isOpen;
+    prevEditingTx.current = editingTransaction;
   }, [isOpen, editingTransaction, initialType, initialDate, categories, wallets]);
 
   // When type toggles, auto switch to default category of that type

@@ -63,13 +63,23 @@ export function loadUserData(userId, onCloudUpdate) {
       if (cloudData) {
         let cloudTxs = cloudData.transactions || [];
 
+        // Read current local cache
+        const currentLocalRaw = localStorage.getItem(keys.txsKey);
+        const currentLocalTxs = currentLocalRaw ? JSON.parse(currentLocalRaw) : [];
+
         // Auto-migrate local transactions to MongoDB if new cloud database has 0 transactions
-        if (cloudTxs.length === 0 && localData.transactions && localData.transactions.length > 0) {
-          cloudTxs = localData.transactions;
-          syncUserDataToCloud(userId, localData);
+        if (cloudTxs.length === 0 && currentLocalTxs.length > 0) {
+          cloudTxs = currentLocalTxs;
+          syncUserDataToCloud(userId, { ...localData, transactions: currentLocalTxs });
         }
 
-        if (cloudTxs.length > 0) localStorage.setItem(keys.txsKey, JSON.stringify(cloudTxs));
+        // Intelligently merge cloud transactions with local transactions so recently added inputs are never lost
+        const mergedMap = new Map();
+        currentLocalTxs.forEach(tx => mergedMap.set(tx.id, tx));
+        cloudTxs.forEach(tx => mergedMap.set(tx.id, tx));
+        const finalTxs = Array.from(mergedMap.values());
+
+        if (finalTxs.length > 0) localStorage.setItem(keys.txsKey, JSON.stringify(finalTxs));
         if (cloudData.categories) localStorage.setItem(keys.catsKey, JSON.stringify(cloudData.categories));
         if (cloudData.budgets) localStorage.setItem(keys.budgetsKey, JSON.stringify(cloudData.budgets));
         if (cloudData.goals) localStorage.setItem(keys.goalsKey, JSON.stringify(cloudData.goals));
@@ -79,7 +89,7 @@ export function loadUserData(userId, onCloudUpdate) {
 
         if (onCloudUpdate) {
           onCloudUpdate({
-            transactions: cloudTxs,
+            transactions: finalTxs,
             categories: cloudData.categories && cloudData.categories.length > 0 ? cloudData.categories : localData.categories,
             budgets: cloudData.budgets || localData.budgets,
             goals: cloudData.goals || localData.goals,
@@ -97,8 +107,8 @@ export function loadUserData(userId, onCloudUpdate) {
   if (userId) {
     // Initial Fetch
     fetchCloudData();
-    // Poll every 10 seconds for cross-device sync
-    intervalId = setInterval(fetchCloudData, 10000);
+    // Poll every 15 seconds for cross-device sync
+    intervalId = setInterval(fetchCloudData, 15000);
   }
 
   const unsubscribe = () => {
@@ -127,15 +137,13 @@ export async function syncUserDataToCloud(userId, data) {
       })
     });
 
-    // 2. Sync Transactions individually to MongoDB Transaction Collection
-    if (data.transactions && Array.isArray(data.transactions)) {
-      for (const tx of data.transactions) {
-        await fetch('/api/transactions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, transaction: tx })
-        });
-      }
+    // 2. Sync Transactions in a single bulk API call
+    if (data.transactions && Array.isArray(data.transactions) && data.transactions.length > 0) {
+      await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, transactions: data.transactions })
+      });
     }
   } catch (err) {
     console.warn('MongoDB Cloud Sync error:', err);
